@@ -1,0 +1,19 @@
+FROM golang:alpine AS builder
+WORKDIR /api
+COPY . /api
+RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-w -s" -o api ./cmd/api/api.go
+
+FROM alpine:latest AS runner
+WORKDIR /api
+COPY --from=builder /api/api .
+# timezone
+RUN apk add --no-cache tzdata
+ENV TZ $TZ
+# install font-noto-cjk
+RUN apk add --no-cache font-noto-cjk
+# install chromium
+RUN apk add --no-cache chromium
+
+EXPOSE 80
+
+ENTRYPOINT ["./api"]

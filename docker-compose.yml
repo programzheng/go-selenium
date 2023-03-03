@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+    #go-selenium
+    go-selenium:
+      build:
+        context: .
+        dockerfile: ./Dockerfile.linux
+        args:
+          - WORKSPACE=${WORKSPACE}
+      restart: always
+      env_file:
+        - .env
+      volumes:
+        - ./storage:/${WORKSPACE}/storage
+      ports:
+        - ${API_PORT}:80
+      networks:
+        - backend
+networks:
+  backend:
+    external: true
