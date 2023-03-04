@@ -23,7 +23,7 @@ func main() {
 	router.GET("/screenshot/download/:filename", screenshot.DownloadStaticScreenshotFile)
 
 	// 監聽端口
-	port := config.Cfg.GetString("API_PORT")
+	port := config.Cfg.GetString("PORT")
 	if port == "" {
 		port = "80"
 	}
