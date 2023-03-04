@@ -2,9 +2,9 @@ package screenshot
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
-	"image/png"
-	"log"
+	"image/jpeg"
 	"math/rand"
 	"net/http"
 	"os"
@@ -17,10 +17,7 @@ import (
 
 const screenshotPath = "./storage/screenshots"
 
-func ScreenshotByURL(c *gin.Context) {
-	// 從 POST 請求中讀取 URL 參數
-	url := c.PostForm("url")
-
+func fullScreenshot(url string) (*[]byte, error) {
 	// 建立新的上下文和超時
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -34,19 +31,32 @@ func ScreenshotByURL(c *gin.Context) {
 		chromedp.Navigate(url),
 		chromedp.WaitReady("body"),
 	); err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// 獲取整個網頁的截圖
 	var buf []byte
 	if err := chromedp.Run(ctx, chromedp.FullScreenshot(&buf, 100)); err != nil {
-		log.Fatal(err)
+		return nil, err
+	}
+
+	return &buf, nil
+}
+
+func SaveScreenshotByURL(c *gin.Context) {
+	// 從 POST 請求中讀取 URL 參數
+	url := c.PostForm("url")
+
+	buf, err := fullScreenshot(url)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
 	}
 
 	// 將截圖保存到本地文件
-	filename := fmt.Sprintf("%s_%s.png", getDateTime(), randomString(10))
+	filename := fmt.Sprintf("%s_%s.jpeg", getDateTime(), randomString(10))
 	filepath := filepath.Join(screenshotPath, filename)
-	if err := os.WriteFile(filepath, buf, 0644); err != nil {
+	if err := os.WriteFile(filepath, *buf, 0644); err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
@@ -74,7 +84,32 @@ func getDateTime() string {
 	return time.Now().Format("20060102150405")
 }
 
-func PreviewScreenshot(c *gin.Context) {
+func DynamicPreviewScreenshot(c *gin.Context) {
+	// 取得截圖的網址參數
+	url := c.Param("url")
+
+	// 將網址轉換為編碼過的字串
+	decodedURL, err := base64.URLEncoding.DecodeString(url)
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("解碼失敗：%v", err))
+		return
+	}
+
+	// 產生網頁截圖
+	buf, err := fullScreenshot(string(decodedURL))
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	// 設定回應的 MIME 類型
+	c.Header("Content-Type", "image/png")
+
+	// 將圖片資料輸出到回應內容中
+	c.Data(http.StatusOK, "image/png", *buf)
+}
+
+func PreviewByStaticScreenshotFile(c *gin.Context) {
 	// 從 URL 中讀取圖片文件名
 	filename := c.Param("filename")
 
@@ -90,25 +125,25 @@ func PreviewScreenshot(c *gin.Context) {
 	defer file.Close()
 
 	// 讀取文件
-	img, err := png.Decode(file)
+	img, err := jpeg.Decode(file)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
 	// 設置 HTTP 響應頭
-	c.Header("Content-Type", "image/png")
+	c.Header("Content-Type", "image/jpeg")
 	c.Header("Content-Disposition", "inline")
 
 	// 將圖片寫入響應中
-	err = png.Encode(c.Writer, img)
+	err = jpeg.Encode(c.Writer, img, nil)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 }
 
-func DownloadScreenshot(c *gin.Context) {
+func DownloadStaticScreenshotFile(c *gin.Context) {
 	// 從 URL 中讀取圖片文件名
 	filename := c.Param("filename")
 
@@ -124,18 +159,18 @@ func DownloadScreenshot(c *gin.Context) {
 	defer file.Close()
 
 	// 讀取文件
-	img, err := png.Decode(file)
+	img, err := jpeg.Decode(file)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
 	// 設置 HTTP 響應頭
-	c.Header("Content-Type", "image/png")
+	c.Header("Content-Type", "image/jpeg")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 
 	// 將圖片寫入響應中
-	err = png.Encode(c.Writer, img)
+	err = jpeg.Encode(c.Writer, img, nil)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return

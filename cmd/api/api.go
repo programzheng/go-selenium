@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
+	"github.com/programzheng/go-selenium/config"
 	"github.com/programzheng/go-selenium/internal/screenshot"
 )
 
@@ -12,12 +15,18 @@ func main() {
 	// 設置API路由
 	apiGroup := router.Group("/api/v1")
 	{
-		apiGroup.POST("/screenshot", screenshot.ScreenshotByURL)
+		apiGroup.POST("/screenshot", screenshot.SaveScreenshotByURL)
 	}
 
-	router.GET("/screenshot/preview/:filename", screenshot.PreviewScreenshot)
-	router.GET("/screenshot/download/:filename", screenshot.DownloadScreenshot)
+	router.GET("/screenshot/dynamic/:url", screenshot.DynamicPreviewScreenshot)
+	router.GET("/screenshot/static/:filename", screenshot.PreviewByStaticScreenshotFile)
+	router.GET("/screenshot/download/:filename", screenshot.DownloadStaticScreenshotFile)
 
 	// 監聽端口
-	router.Run(":80")
+	port := config.Cfg.GetString("API_PORT")
+	if port == "" {
+		port = "80"
+	}
+
+	router.Run(fmt.Sprintf(":%s", port))
 }
