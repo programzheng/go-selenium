@@ -7,12 +7,9 @@ FROM alpine:latest AS runner
 WORKDIR /api
 COPY --from=builder /api/api .
 # timezone
-RUN apk add --no-cache tzdata
 ENV TZ $TZ
-# install font-noto-cjk
-RUN apk add --no-cache font-noto-cjk
-# install chromium
-RUN apk add --no-cache chromium
+# install tzdata and font-noto-cjk and chromium
+RUN apk add --no-cache tzdata font-noto-cjk chromium
 
 EXPOSE 80
 
