@@ -19,7 +19,7 @@ const screenshotPath = "./storage/screenshots"
 
 func fullScreenshot(url string) (*[]byte, error) {
 	// 建立新的上下文和超時
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
 	// 建立新的Chrome實例
